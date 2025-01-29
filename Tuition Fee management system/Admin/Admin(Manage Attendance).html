@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Attendance</title>
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        // Import Firebase modules
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-app.js";
+        import { getFirestore, doc, collection, getDocs } from "https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore.js";
+
+        // Firebase configuration
+        const firebaseConfig = {
+            apiKey: "AIzaSyD82EK0Jgf5AjAbnzLDd0p4bcIVIEChehQ",
+            authDomain: "tuition-fee-management.firebaseapp.com",
+            databaseURL: "https://tuition-fee-management-default-rtdb.firebaseio.com",
+            projectId: "tuition-fee-management",
+            storageBucket: "tuition-fee-management.firebasestorage.app",
+            messagingSenderId: "801226019338",
+            appId: "1:801226019338:web:57b6b012e0d3ef312405f3",
+            measurementId: "G-5HNNR0R0HR"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        // Get today's date (for example, January 29, 2025)
+        const today = new Date();
+        const year = today.getFullYear();
+        const month = String(today.getMonth() + 1).padStart(2, '0');
+        const day = String(today.getDate()).padStart(2, '0');
+        const subject = "F5 Economy";  // Change this dynamically if needed
+
+        // Fetch attendance records
+        async function fetchAttendance() {
+            const tableBody = document.getElementById('attendance-table-body');
+            tableBody.innerHTML = '';
+
+            // Reference to Firestore collection `attendance/{year}/{month}/{day}/subjects/{subject}/records`
+            const attendanceRef = collection(db, `attendance/${year}/${month}/${day}/subjects/${subject}/records`);
+            console.log(`Querying path: attendance/${year}/${month}/${day}/subjects/${subject}/records`);  // Log query path
+
+            try {
+                const querySnapshot = await getDocs(attendanceRef);
+                if (querySnapshot.empty) {
+                    tableBody.innerHTML = '<tr><td colspan="5">No attendance records available.</td></tr>';
+                    return;
+                }
+
+                // Loop through each record
+                querySnapshot.forEach(docSnap => {
+                    const data = docSnap.data();
+                    const attendedValue = data.attended ? "Present" : "Absent";  // Assuming 'attended' is a boolean field
+
+                    const row = `
+                        <tr data-id="${docSnap.id}">
+                            <td>${data.name}</td>
+                            <td>${attendedValue}</td>
+                            <td><input type="checkbox" class="attendance-input" ${data.attended ? 'checked' : ''}></td>
+                            <td><button class="action-btn save-btn">Save</button></td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                });
+
+                addSaveEventListeners();
+            } catch (error) {
+                console.error("Error fetching attendance records:", error);
+                tableBody.innerHTML = '<tr><td colspan="5">Error loading attendance records.</td></tr>';
+            }
+        }
+
+        // Attach event listeners to save buttons
+        function addSaveEventListeners() {
+            document.querySelectorAll('.save-btn').forEach(button => {
+                button.addEventListener('click', async () => {
+                    const row = button.closest('tr');
+                    const docId = row.getAttribute('data-id');
+                    const attended = row.querySelector('.attendance-input').checked;
+
+                    // Reference the document in Firestore and update attendance
+                    const docRef = doc(db, `attendance/${year}/${month}/${day}/subjects/${subject}/records`, docId);
+                    await updateDoc(docRef, {
+                        attended: attended
+                    });
+
+                    alert('Attendance updated successfully!');
+                });
+            });
+        }
+
+        // Fetch attendance when the page loads
+        window.addEventListener('DOMContentLoaded', fetchAttendance);
+    </script>
+
+    <style>
+        /* General Styles */
+        body {
+            font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f7fc;
+            color: #2c3e50;
+        }
+
+        .dashboard {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Sidebar Styles */
+        .sidebar {
+            width: 250px;
+            background-color: #27ae60;
+            color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .sidebar h2 {
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 22px;
+            letter-spacing: 1px;
+        }
+
+        .sidebar ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .sidebar ul li {
+            margin-bottom: 20px;
+        }
+
+        .sidebar ul li a {
+            color: #ffffff;
+            text-decoration: none;
+            font-size: 18px;
+            display: block;
+            padding: 10px 15px;
+            border-radius: 5px;
+            transition: background 0.3s ease;
+        }
+
+        .sidebar ul li a:hover {
+            background-color: #1abc9c;
+        }
+
+        /* Content Area */
+        .content {
+            flex-grow: 1;
+            padding: 40px;
+            background-color: #ffffff;
+            overflow-y: auto;
+        }
+
+        .content section {
+            margin-bottom: 40px;
+            background: #ffffff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .content section h3 {
+            margin-bottom: 20px;
+            font-size: 24px;
+            color: #2c3e50;
+        }
+
+        /* Table Styling */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        table thead {
+            background-color: #ecf0f1;
+        }
+
+        table thead th {
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #2c3e50;
+            border-bottom: 2px solid #ddd;
+        }
+
+        table tbody tr {
+            transition: background 0.3s ease;
+        }
+
+        table tbody tr:hover {
+            background-color: #f9f9f9;
+        }
+
+        table tbody td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+
+        /* Editable Fields */
+        .attendance-input {
+            width: 50px;
+            padding: 5px;
+            text-align: center;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+            font-size: 14px;
+            margin: 0 auto;
+        }
+
+        /* Action Buttons */
+        .action-btn {
+            padding: 8px 16px;
+            font-size: 14px;
+            background-color: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+        }
+
+        .action-btn:hover {
+            background-color: #2ecc71;
+        }
+
+        .action-btn:focus {
+            outline: none;
+        }
+
+        .save-btn {
+            background-color: #3498db;
+        }
+
+        .save-btn:hover {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard">
+        <aside class="sidebar">
+            <h2>Admin Dashboard</h2>
+            <ul>
+                <li><a href="Admin dashboard.html">Register Student</a></li>
+                <li><a href="Admin(Manage Attendance).html">Manage Attendance</a></li>
+            </ul>
+        </aside>
+
+        <main class="content">
+            <section id="manage-attendance">
+                <h3>Manage Student Attendance</h3>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Student Name</th>
+                            <th>Attendance</th>
+                            <th>Mark Attendance</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="attendance-table-body"></tbody>
+                </table>
+            </section>
+        </main>
+    </div>
+</body>
+</html>
